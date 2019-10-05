@@ -36,13 +36,14 @@ void readData() {
     allPasses.put(player.getInt("id"), new JSONArray());
     allPasses.put(player2.getInt("id"), new JSONArray());
   }
-  
+  int mirrorX = 60;
+  int mirrorY = 40;
   for (int i = 4; i < input.size(); i++) {
       JSONObject currentEvent = input.getJSONObject(i);
       int eventType = currentEvent.getJSONObject("type").getInt("id");
+      int teamId = currentEvent.getJSONObject("team").getInt("id");
       switch(eventType) {
         case 19:
-          int teamId = currentEvent.getJSONObject("team").getInt("id");
           JSONObject substitution = currentEvent.getJSONObject("substitution").getJSONObject("replacement");
           if (teamId == team1Id) {
             team1.put(substitution.getInt("id"), substitution.getString("name"));
@@ -52,12 +53,21 @@ void readData() {
           allPasses.put(substitution.getInt("id"), new JSONArray());
           break;
         case 30:
+          int startX = currentEvent.getJSONArray("location").getInt(0);
+          int startY = currentEvent.getJSONArray("location").getInt(1);
+          int endX = currentEvent.getJSONObject("pass").getJSONArray("end_location").getInt(0);
+          int endY = currentEvent.getJSONObject("pass").getJSONArray("end_location").getInt(1);
+          if (teamId == team2Id) {
+            startX = -startX + mirrorX * 2;
+            startY = -startY + mirrorY * 2;
+            endX = -endX + mirrorX * 2;
+            endY = -endY + mirrorY * 2;
+          }
           JSONObject pass = new JSONObject();
-          // !! Preveri kaj je x, kaj y
-          pass.setInt("startX", currentEvent.getJSONArray("location").getInt(0));
-          pass.setInt("startY", currentEvent.getJSONArray("location").getInt(1));
-          pass.setInt("endX", currentEvent.getJSONObject("pass").getJSONArray("end_location").getInt(0));
-          pass.setInt("endY", currentEvent.getJSONObject("pass").getJSONArray("end_location").getInt(1));
+          pass.setInt("startX", startX);
+          pass.setInt("startY", startY);
+          pass.setInt("endX", endX);
+          pass.setInt("endY", endY);
           allPasses.get(currentEvent.getJSONObject("player").getInt("id")).append(pass);
           break;
     }
@@ -87,7 +97,7 @@ void drawPitch(int sizeX, int sizeY) {
 
 void draw() {
   // Pass id = 30
-  int playerid = 4640;
+  int playerid = 19419;
   JSONArray passes = allPasses.get(playerid);
   for (int i = 0; i < passes.size(); i++) {
     JSONObject currentPass = (JSONObject) passes.get(i);
