@@ -1,5 +1,6 @@
 import java.util.Map;
 import java.lang.Math;
+import controlP5.*;
 
 JSONArray input;
 JSONArray homeTeam;
@@ -9,13 +10,15 @@ Map<Integer, String> team2;
 Map<Integer, JSONArray> allPasses;
 int team1Id;
 int team2Id;
+ControlP5 cp5;
 
 int offsetX, offsetY, multiplier;
 
 void setup() {
-  size(800,800);
+  cp5 = new ControlP5(this);
+  size(1200, 800);
   background(255);
-  drawPitch(800, 800);
+  drawPitch(width, height);
   readData();
 }
 
@@ -72,36 +75,70 @@ void readData() {
           break;
     }
   }
+  int counter = 1;
+  for (int key : team1.keySet()) {
+    //rect(50, counter * 50, 150, 50);
+    cp5.addButton(team1.get(key)).setValue(key).setPosition(50, counter * 50).setSize(150, 40)
+                  .onPress(new CallbackListener() { // a callback function that will be called onPress
+                    public void controlEvent(CallbackEvent theEvent) {
+                      String name = theEvent.getController().getName();
+                      int value = (int)theEvent.getController().getValue();
+                      println("got a press from a " + name + ", the value is " + value);
+                      drawPasses(value);
+                    }
+                  });
+    counter++;
+  }
+  counter = 1;
+  for (int key : team2.keySet()) {
+    cp5.addButton(team2.get(key)).setValue(key).setPosition(width - 200, counter * 50).setSize(150, 40)
+                  .onPress(new CallbackListener() { // a callback function that will be called onPress
+                    public void controlEvent(CallbackEvent theEvent) {
+                      String name = theEvent.getController().getName();
+                      int value = (int)theEvent.getController().getValue();
+                      println("got a press from a " + name + ", the value is " + value);
+                      drawPasses(value);
+                    }
+                  });
+    counter++;
+  }
 }
 
 void drawPitch(int sizeX, int sizeY) {
-  multiplier = min(sizeX / 120, sizeY / 80);
+  multiplier = min((sizeX - 400) / 120, (sizeY - 400) / 80);
   offsetX = (sizeX - (multiplier * 120)) / 2;
   offsetY = (sizeY - (multiplier * 80)) / 2;
+  fill(255);
+  rect(offsetX, offsetY, multiplier * 120, multiplier * 80);
   noFill();
   // Leva stran
-  rect(offsetX, offsetY, multiplier * 120, multiplier * 80);
   rect(offsetX, offsetY + 18 * multiplier, 18 * multiplier, 44 * multiplier);
   rect(offsetX, offsetY + 30 * multiplier, 6 * multiplier, 20 * multiplier);
   rect(offsetX - 15, offsetY + 36 * multiplier, 15, 8 * multiplier);
-  arc(offsetX + 13 * multiplier, offsetY + 40 * multiplier, 16.2 * multiplier, 16.2 * multiplier, (float)Math.toRadians(310), (float)Math.toRadians(360));
-  arc(offsetX + 13 * multiplier, offsetY + 40 * multiplier, 16.2 * multiplier, 16.2 * multiplier, (float)Math.toRadians(0), (float)Math.toRadians(50));
+  arc(offsetX + 13 * multiplier, offsetY + 40 * multiplier, 16 * multiplier, 16 * multiplier, (float)Math.toRadians(310), (float)Math.toRadians(360));
+  arc(offsetX + 13 * multiplier, offsetY + 40 * multiplier, 16 * multiplier, 16 * multiplier, (float)Math.toRadians(0), (float)Math.toRadians(50));
   
   // Desna stran
   rect(offsetX + 102 * multiplier, offsetY + 18 * multiplier, 18 * multiplier, 44 * multiplier);
   rect(offsetX + 114 * multiplier, offsetY + 30 * multiplier, 6 * multiplier, 20 * multiplier);
   rect(offsetX + 120 * multiplier, offsetY + 36 * multiplier, 15, 8 * multiplier);
-  arc(offsetX + 107 * multiplier, offsetY + 40 * multiplier, 16.2 * multiplier, 16.2 * multiplier, (float)Math.toRadians(130), (float)Math.toRadians(230));
-  //arc(offsetX + 107 * multiplier, offsetY + 40 * multiplier, 16.2 * multiplier, 16.2 * multiplier, (float)Math.toRadians(0), (float)Math.toRadians(50));
+  arc(offsetX + 107 * multiplier, offsetY + 40 * multiplier, 16 * multiplier, 16 * multiplier, (float)Math.toRadians(130), (float)Math.toRadians(230));
+  
+  // Sredina
+  line(offsetX + 60 * multiplier, offsetY, offsetX + 60 * multiplier, offsetY + 80 * multiplier);
+  circle(offsetX + 60 * multiplier, offsetY + 40 * multiplier, (offsetX + 80 * multiplier) / 4);
 }
 
-void draw() {
-  // Pass id = 30
-  int playerid = 19419;
-  JSONArray passes = allPasses.get(playerid);
+void drawPasses(int playerId) {
+  drawPitch(width, height);
+  JSONArray passes = allPasses.get(playerId);
   for (int i = 0; i < passes.size(); i++) {
     JSONObject currentPass = (JSONObject) passes.get(i);
     line(currentPass.getInt("startX") * multiplier + offsetX, currentPass.getInt("startY") * multiplier + offsetY,
         currentPass.getInt("endX") * multiplier + offsetX, currentPass.getInt("endY") * multiplier + offsetY);
   }
+}
+
+void draw() {
+  // Pass id = 30
 }
