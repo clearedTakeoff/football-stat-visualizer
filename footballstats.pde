@@ -8,9 +8,10 @@ JSONArray awayTeam;
 Map<Integer, String> team1;
 Map<Integer, String> team2;
 Map<Integer, JSONArray> allPasses;
+Map<Integer, JSONArray> allShots;
 int team1Id;
 int team2Id;
-RadioButton halfSelector;
+RadioButton halfSelector, playTypeSelector;
 ControlP5 cp5;
 int offsetX, offsetY, multiplier, selectedPlayer;
 
@@ -35,12 +36,25 @@ void setup() {
      halfSelector.getItem(i).getCaptionLabel().setPaddingX(-70);
   }
   halfSelector.activate("Cela tekma");
+  
+  playTypeSelector = cp5.addRadioButton("playType")
+                        .setPosition((width - 220) / 2, 700)
+                        .setSize(100, 50)
+                        .setItemsPerRow(2)
+                        .setSpacingColumn(20)
+                        .setNoneSelectedAllowed(false);
+  playTypeSelector.addItem("Podaje", 1);
+  playTypeSelector.addItem("Streli", 2);
+  for (int i = 0; i < 2; i++) {
+     playTypeSelector.getItem(i).getCaptionLabel().setPaddingX(-60);
+  }
+  playTypeSelector.activate("Podaje");
 }
 
 void controlEvent(ControlEvent theEvent) {
-  if (theEvent.getName().equals("Polcas")) {
+  if (theEvent.getName().equals("Polcas") || theEvent.getName().equals("playType")) {
     if (selectedPlayer != 0) {
-      drawPasses(selectedPlayer);
+      drawEvents((int)playTypeSelector.getValue(), selectedPlayer);
     }
   }
 }
@@ -48,10 +62,18 @@ void controlEvent(ControlEvent theEvent) {
 void readData() {
   input = loadJSONArray("19776.json");
   homeTeam = input.getJSONObject(0).getJSONObject("tactics").getJSONArray("lineup");
+  String team1Name = input.getJSONObject(0).getJSONObject("team").getString("name");
   awayTeam = input.getJSONObject(1).getJSONObject("tactics").getJSONArray("lineup");
+  String team2Name = input.getJSONObject(1).getJSONObject("team").getString("name");
+  textSize(24);
+  fill(0);
+  text(team2Name, 50, 35);
+  textAlign(RIGHT);
+  text(team1Name, width - 50, 35);
   team1 = new HashMap<Integer, String>();
   team2 = new HashMap<Integer, String>();
   allPasses = new HashMap<Integer, JSONArray>();
+  allShots = new HashMap<Integer, JSONArray>();
   team1Id = input.getJSONObject(0).getJSONObject("team").getInt("id");
   team2Id = input.getJSONObject(0).getJSONObject("team").getInt("id");
   for (int i = 0; i < 11; i++) {
@@ -60,10 +82,13 @@ void readData() {
     JSONObject player2 = awayTeam.getJSONObject(i).getJSONObject("player");
     team2.put(player2.getInt("id"), player2.getString("name"));
     allPasses.put(player.getInt("id"), new JSONArray());
+    allShots.put(player.getInt("id"), new JSONArray());
     allPasses.put(player2.getInt("id"), new JSONArray());
+    allShots.put(player2.getInt("id"), new JSONArray());
   }
   int mirrorX = 60;
   int mirrorY = 40;
+  int startX, startY, endX, endY;
   for (int i = 4; i < input.size(); i++) {
       JSONObject currentEvent = input.getJSONObject(i);
       int eventType = currentEvent.getJSONObject("type").getInt("id");
@@ -77,12 +102,37 @@ void readData() {
             team2.put(substitution.getInt("id"), substitution.getString("name"));
           }
           allPasses.put(substitution.getInt("id"), new JSONArray());
+          allShots.put(substitution.getInt("id"), new JSONArray());
+          break;
+        case 16:  
+          startX = currentEvent.getJSONArray("location").getInt(0);
+          startY = currentEvent.getJSONArray("location").getInt(1);
+          endX = currentEvent.getJSONObject("shot").getJSONArray("end_location").getInt(0);
+          endY = currentEvent.getJSONObject("shot").getJSONArray("end_location").getInt(1);
+          if (teamId == team2Id) {
+            startX = -startX + mirrorX * 2;
+            startY = -startY + mirrorY * 2;
+            endX = -endX + mirrorX * 2;
+            endY = -endY + mirrorY * 2;
+          }
+          JSONObject shot = new JSONObject();
+          shot.setInt("startX", startX);
+          shot.setInt("startY", startY);
+          shot.setInt("endX", endX);
+          shot.setInt("endY", endY);
+          shot.setInt("half", currentEvent.getInt("period"));
+          if (currentEvent.getJSONObject("shot").getJSONObject("outcome").getInt("id") == 97) {
+            shot.setBoolean("success", true);
+          } else {
+            shot.setBoolean("success", false);
+          }
+          allShots.get(currentEvent.getJSONObject("player").getInt("id")).append(shot);
           break;
         case 30:
-          int startX = currentEvent.getJSONArray("location").getInt(0);
-          int startY = currentEvent.getJSONArray("location").getInt(1);
-          int endX = currentEvent.getJSONObject("pass").getJSONArray("end_location").getInt(0);
-          int endY = currentEvent.getJSONObject("pass").getJSONArray("end_location").getInt(1);
+          startX = currentEvent.getJSONArray("location").getInt(0);
+          startY = currentEvent.getJSONArray("location").getInt(1);
+          endX = currentEvent.getJSONObject("pass").getJSONArray("end_location").getInt(0);
+          endY = currentEvent.getJSONObject("pass").getJSONArray("end_location").getInt(1);
           if (teamId == team2Id) {
             startX = -startX + mirrorX * 2;
             startY = -startY + mirrorY * 2;
@@ -112,7 +162,7 @@ void readData() {
                       String name = theEvent.getController().getName();
                       int value = (int)theEvent.getController().getValue();
                       selectedPlayer = value;
-                      drawPasses(value);
+                      drawEvents((int)playTypeSelector.getValue(), value);
                       }
                   });
     counter++;
@@ -125,7 +175,7 @@ void readData() {
                       String name = theEvent.getController().getName();
                       int value = (int)theEvent.getController().getValue();
                       selectedPlayer = value;
-                      drawPasses(value);
+                      drawEvents((int)playTypeSelector.getValue(), value);
                       }
                   });
     counter++;
@@ -157,6 +207,16 @@ void drawPitch(int sizeX, int sizeY) {
   circle(offsetX + 60 * multiplier, offsetY + 40 * multiplier, (offsetX + 80 * multiplier) / 4);
 }
 
+void drawEvents(int type, int playerId) {
+  if (playerId != 0) {
+    if (type == 1) {
+      drawPasses(playerId);
+    } else if (type == 2) {
+      drawShots(playerId);
+    }
+  }
+}
+
 void drawPasses(int playerId) {
   drawPitch(width, height);
   JSONArray passes = allPasses.get(playerId);
@@ -175,6 +235,25 @@ void drawPasses(int playerId) {
   stroke(0,0,0);
 }
 
+void drawShots(int playerId) {
+  drawPitch(width, height);
+  JSONArray shots = allShots.get(playerId);
+  for (int i = 0; i < shots.size(); i++) {
+    JSONObject currentShot = (JSONObject) shots.get(i);
+    if ((int)halfSelector.getValue() == 3 || (int)halfSelector.getValue() == currentShot.getInt("half")) {
+      if (currentShot.getBoolean("success")) {
+        stroke(0, 255, 0);
+      } else {
+        stroke(255, 0, 0);
+      }
+      line(currentShot.getInt("startX") * multiplier + offsetX, currentShot.getInt("startY") * multiplier + offsetY,
+          currentShot.getInt("endX") * multiplier + offsetX, currentShot.getInt("endY") * multiplier + offsetY);
+    }
+  }
+  stroke(0,0,0);
+}
+
 void draw() {
   // Pass id = 30
+  //drawShots(16378);
 }
