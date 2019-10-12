@@ -10,9 +10,9 @@ Map<Integer, String> team2;
 Map<Integer, JSONArray> allPasses;
 int team1Id;
 int team2Id;
+RadioButton halfSelector;
 ControlP5 cp5;
-
-int offsetX, offsetY, multiplier;
+int offsetX, offsetY, multiplier, selectedPlayer;
 
 void setup() {
   cp5 = new ControlP5(this);
@@ -20,6 +20,29 @@ void setup() {
   background(255);
   drawPitch(width, height);
   readData();
+  
+  // Trije gumbi za izbiro polčasa za prikaz (1., 2. ali celotna tekma(default value))
+  halfSelector = cp5.addRadioButton("Polcas")
+                  .setPosition((width - 340) / 2, 120)
+                  .setSize(100, 50)
+                  .setItemsPerRow(3)
+                  .setSpacingColumn(20)
+                  .setNoneSelectedAllowed(false);
+  halfSelector.addItem("1. polcas", 1);
+  halfSelector.addItem("2. polcas", 2);
+  halfSelector.addItem("Cela tekma", 3);
+  for (int i = 0; i < 3; i++) {
+     halfSelector.getItem(i).getCaptionLabel().setPaddingX(-70);
+  }
+  halfSelector.activate("Cela tekma");
+}
+
+void controlEvent(ControlEvent theEvent) {
+  if (theEvent.getName().equals("Polcas")) {
+    if (selectedPlayer != 0) {
+      drawPasses(selectedPlayer);
+    }
+  }
 }
 
 void readData() {
@@ -71,34 +94,39 @@ void readData() {
           pass.setInt("startY", startY);
           pass.setInt("endX", endX);
           pass.setInt("endY", endY);
+          pass.setInt("half", currentEvent.getInt("period"));
+          if (currentEvent.getJSONObject("pass").isNull("outcome")) {
+            pass.setBoolean("success", true);
+          } else {
+            pass.setBoolean("success", false);
+          }
           allPasses.get(currentEvent.getJSONObject("player").getInt("id")).append(pass);
           break;
     }
   }
   int counter = 1;
-  for (int key : team1.keySet()) {
-    //rect(50, counter * 50, 150, 50);
-    cp5.addButton(team1.get(key)).setValue(key).setPosition(50, counter * 50).setSize(150, 40)
-                  .onPress(new CallbackListener() { // a callback function that will be called onPress
+  for (int key : team2.keySet()) {
+    cp5.addButton(team2.get(key)).setValue(key).setPosition(50, counter * 50).setSize(150, 40)
+                  .onPress(new CallbackListener() {
                     public void controlEvent(CallbackEvent theEvent) {
                       String name = theEvent.getController().getName();
                       int value = (int)theEvent.getController().getValue();
-                      println("got a press from a " + name + ", the value is " + value);
+                      selectedPlayer = value;
                       drawPasses(value);
-                    }
+                      }
                   });
     counter++;
   }
   counter = 1;
-  for (int key : team2.keySet()) {
-    cp5.addButton(team2.get(key)).setValue(key).setPosition(width - 200, counter * 50).setSize(150, 40)
-                  .onPress(new CallbackListener() { // a callback function that will be called onPress
+  for (int key : team1.keySet()) {
+    cp5.addButton(team1.get(key)).setValue(key).setPosition(width - 200, counter * 50).setSize(150, 40)
+                  .onPress(new CallbackListener() {
                     public void controlEvent(CallbackEvent theEvent) {
                       String name = theEvent.getController().getName();
                       int value = (int)theEvent.getController().getValue();
-                      println("got a press from a " + name + ", the value is " + value);
+                      selectedPlayer = value;
                       drawPasses(value);
-                    }
+                      }
                   });
     counter++;
   }
@@ -134,9 +162,17 @@ void drawPasses(int playerId) {
   JSONArray passes = allPasses.get(playerId);
   for (int i = 0; i < passes.size(); i++) {
     JSONObject currentPass = (JSONObject) passes.get(i);
-    line(currentPass.getInt("startX") * multiplier + offsetX, currentPass.getInt("startY") * multiplier + offsetY,
-        currentPass.getInt("endX") * multiplier + offsetX, currentPass.getInt("endY") * multiplier + offsetY);
+    if ((int)halfSelector.getValue() == 3 || (int)halfSelector.getValue() == currentPass.getInt("half")) {
+      if (currentPass.getBoolean("success")) {
+        stroke(0, 255, 0);
+      } else {
+        stroke(255, 0, 0);
+      }
+      line(currentPass.getInt("startX") * multiplier + offsetX, currentPass.getInt("startY") * multiplier + offsetY,
+          currentPass.getInt("endX") * multiplier + offsetX, currentPass.getInt("endY") * multiplier + offsetY);
+    }
   }
+  stroke(0,0,0);
 }
 
 void draw() {
