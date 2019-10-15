@@ -187,6 +187,9 @@ void drawPitch(int sizeX, int sizeY) {
   offsetX = (sizeX - (multiplier * 120)) / 2;
   offsetY = (sizeY - (multiplier * 80)) / 2;
   fill(255);
+  noStroke();
+  rect(offsetX - 20, offsetY - 20, multiplier * 120 + 40, multiplier * 80 + 40);
+  stroke(0);
   rect(offsetX, offsetY, multiplier * 120, multiplier * 80);
   noFill();
   // Leva stran
@@ -228,7 +231,7 @@ void drawPasses(int playerId) {
       } else {
         stroke(255, 0, 0);
       }
-      line(currentPass.getInt("startX") * multiplier + offsetX, currentPass.getInt("startY") * multiplier + offsetY,
+      drawArrow(currentPass.getInt("startX") * multiplier + offsetX, currentPass.getInt("startY") * multiplier + offsetY,
           currentPass.getInt("endX") * multiplier + offsetX, currentPass.getInt("endY") * multiplier + offsetY);
     }
   }
@@ -246,11 +249,29 @@ void drawShots(int playerId) {
       } else {
         stroke(255, 0, 0);
       }
-      line(currentShot.getInt("startX") * multiplier + offsetX, currentShot.getInt("startY") * multiplier + offsetY,
+      drawArrow(currentShot.getInt("startX") * multiplier + offsetX, currentShot.getInt("startY") * multiplier + offsetY,
           currentShot.getInt("endX") * multiplier + offsetX, currentShot.getInt("endY") * multiplier + offsetY);
     }
   }
   stroke(0,0,0);
+}
+
+void drawArrow(int x1, int y1, int x2, int y2) {
+  float angle = radians(30);
+  float cos = cos(angle);
+  float sin = sin(angle);
+  float dx = (x1 - x2) * (8 / dist(x1, y1, x2, y2));
+  float dy = (y1 - y2) * (8 / dist(x1, y1, x2, y2));
+  float end1_x = x2 + (dx * cos - sin * dy);
+  float end1_y = y2 + (dx * sin + dy * cos);
+  angle = radians(-30);
+  cos = cos(angle);
+  sin = sin(angle);
+  float end2_x = x2 + (dx * cos - sin * dy);
+  float end2_y = y2 + (dx * sin + dy * cos);
+  line(x1, y1, x2, y2);
+  line(x2, y2, end1_x, end1_y);
+  line(x2, y2, end2_x, end2_y);
 }
 
 void draw() {
