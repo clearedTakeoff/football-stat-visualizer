@@ -11,6 +11,8 @@ Map<Integer, JSONArray> allPasses;
 Map<Integer, JSONArray> allShots;
 int team1Id;
 int team2Id;
+int transparency;
+float arrowWidth;
 String team1Name, team2Name;
 RadioButton halfSelector, playTypeSelector;
 ControlP5 cp5;
@@ -19,6 +21,9 @@ int offsetX, offsetY, multiplier, selectedPlayer, currentHeight, currentWidth;
 void setup() {
   //surface.setResizable(true);
   cp5 = new ControlP5(this);
+  PFont p = createFont("bahnschrift.ttf", 12);
+  cp5.setFont(p);
+  textFont(p);
   size(1400, 900);
   currentHeight = height;
   currentWidth = width;
@@ -27,6 +32,8 @@ void setup() {
   drawPitch(width, height); //<>//
   createButtons();
   registerMethod("onResize", this);
+  transparency = 200;
+  arrowWidth = 1.65;
 }
 
 void createButtons() {
@@ -38,11 +45,12 @@ void createButtons() {
                   .setSpacingColumn(20)
                   .setNoneSelectedAllowed(false);
   halfSelector.addItem("1. polčas", 1);
-  halfSelector.addItem("2. polcas", 2);
+  halfSelector.addItem("2. polčas", 2);
   halfSelector.addItem("Cela tekma", 3);
-  for (int i = 0; i < 3; i++) {
-     halfSelector.getItem(i).getCaptionLabel().setPaddingX(-70);
+  for (int i = 0; i < 2; i++) {
+     halfSelector.getItem(i).getCaptionLabel().setPaddingX(-77);
   }
+  halfSelector.getItem(2).getCaptionLabel().setPaddingX(-84);
   halfSelector.activate("Cela tekma");
   playTypeSelector = cp5.addRadioButton("playType")
                         .setPosition((width - 220) / 2, multiplier * 80 + offsetY + 140)
@@ -55,11 +63,13 @@ void createButtons() {
   for (int i = 0; i < 2; i++) {
      playTypeSelector.getItem(i).getCaptionLabel().setPaddingX(-60);
   }
+  playTypeSelector.getItem(0).getCaptionLabel().setPaddingX(-72);
+  playTypeSelector.getItem(1).getCaptionLabel().setPaddingX(-69);
   playTypeSelector.activate("Podaje");
   
   int counter = 1;
   for (int key : team2.keySet()) {
-    cp5.addButton(team2.get(key)).setValue(key).setPosition(50, counter * 50).setSize(150, 40)
+    cp5.addButton(team2.get(key)).setValue(key).setPosition(50, counter * 50).setSize(200, 40)
                   .onPress(new CallbackListener() {
                     public void controlEvent(CallbackEvent theEvent) {
                       int value = (int)theEvent.getController().getValue();
@@ -69,7 +79,7 @@ void createButtons() {
                   });
     counter++;
   }
-  cp5.addButton("Ekipa1").setValue(2).setPosition(50, counter * 50).setSize(150, 40).setLabel("Celotna ekipa")
+  cp5.addButton("Ekipa1").setValue(2).setPosition(50, counter * 50).setSize(200, 40).setLabel("Celotna ekipa")
                   .onPress(new CallbackListener() {
                     public void controlEvent(CallbackEvent theEvent) {
                       int value = (int)theEvent.getController().getValue();
@@ -78,7 +88,7 @@ void createButtons() {
                       }});
   counter = 1;
   for (int key : team1.keySet()) {
-    cp5.addButton(team1.get(key)).setValue(key).setPosition(width - 200, counter * 50).setSize(150, 40)
+    cp5.addButton(team1.get(key)).setValue(key).setPosition(width - 250, counter * 50).setSize(200, 40)
                   .onPress(new CallbackListener() {
                     public void controlEvent(CallbackEvent theEvent) {
                       int value = (int)theEvent.getController().getValue();
@@ -88,7 +98,7 @@ void createButtons() {
                   });
     counter++;
   }
-  cp5.addButton("Ekipa2").setValue(1).setPosition(width - 200, counter * 50).setSize(150, 40).setLabel("Celotna ekipa")
+  cp5.addButton("Ekipa2").setValue(1).setPosition(width - 250, counter * 50).setSize(200, 40).setLabel("Celotna ekipa")
                   .onPress(new CallbackListener() {
                     public void controlEvent(CallbackEvent theEvent) {
                       int value = (int)theEvent.getController().getValue();
@@ -217,6 +227,7 @@ void readData() {
 }
 
 void drawPitch(int sizeX, int sizeY) {
+  strokeWeight(1.25);
   multiplier = min((sizeX - 400) / 120, (sizeY - 400) / 80);
   offsetX = (sizeX - (multiplier * 120)) / 2;
   offsetY = (sizeY - (multiplier * 80)) / 2;
@@ -226,6 +237,7 @@ void drawPitch(int sizeX, int sizeY) {
   rect(offsetX - 20, multiplier * 80 + offsetY + 10, multiplier * 120 + 30, 140);
   rect(offsetX - 20, offsetY - 20, multiplier * 120 + 60, multiplier * 80 + 40);
   stroke(0);
+  fill(225);
   rect(offsetX, offsetY, multiplier * 120, multiplier * 80);
   noFill();
   // Leva stran
@@ -287,14 +299,14 @@ void drawPasses(int playerId) {
     JSONObject currentPass = (JSONObject) passes.get(i);
     if ((int)halfSelector.getValue() == 3 || (int)halfSelector.getValue() == currentPass.getInt("half")) {
       if (currentPass.getBoolean("success")) {
-        stroke(0, 120, 0);
+        stroke(0, 120, 0, transparency);
         if (currentPass.getInt("startX") < 60) {
           successfulLeft++;
         } else {
           successfulRight++;
         }
       } else {
-        stroke(255, 0, 0);
+        stroke(255, 0, 0, transparency);
         if (currentPass.getInt("startX") < 60) {
           failedLeft++;
         } else {
@@ -305,7 +317,6 @@ void drawPasses(int playerId) {
           currentPass.getInt("endX") * multiplier + offsetX, currentPass.getInt("endY") * multiplier + offsetY);
     }
   }
-  println("Left side ok " + successfulLeft, " Left failed " + failedLeft + " right side ok " + successfulRight + " right side failed " + failedRight);
   textAlign(CENTER);
   fill(0);
   textSize(16);
@@ -388,10 +399,10 @@ void drawShots(int playerId) {
     JSONObject currentShot = (JSONObject) shots.get(i);
     if ((int)halfSelector.getValue() == 3 || (int)halfSelector.getValue() == currentShot.getInt("half")) {
       if (currentShot.getBoolean("success")) {
-        stroke(0, 120, 0);
+        stroke(0, 120, 0, transparency);
         successfulShots++;
       } else {
-        stroke(255, 0, 0);
+        stroke(255, 0, 0, transparency);
         failedShots++;
       }
       drawArrow(currentShot.getInt("startX") * multiplier + offsetX, currentShot.getInt("startY") * multiplier + offsetY,
@@ -404,18 +415,14 @@ void drawShots(int playerId) {
   fill(0);
   textSize(16);
   int top = 690;
-  int team, textX;
-  String name, textLeft, textRight;
+  int team;
+  String name;
   if (team1.containsKey(playerId) || playerId == 1) {
     name = team1.get(playerId);
     team = 1;
-    textLeft = "napadu: ";
-    textRight = "obrambi: ";
   } else {
     team = 2;
     name = team2.get(playerId);
-    textLeft = "obrambi: ";
-    textRight = "napadu: ";
   }
   String tmp;
   if (playerId == 1) {
@@ -460,6 +467,7 @@ void drawShots(int playerId) {
 }
 
 void drawArrow(int x1, int y1, int x2, int y2) {
+  strokeWeight(arrowWidth);
   float angle = radians(30);
   float cos = cos(angle);
   float sin = sin(angle);
@@ -475,6 +483,7 @@ void drawArrow(int x1, int y1, int x2, int y2) {
   line(x1, y1, x2, y2);
   line(x2, y2, end1_x, end1_y);
   line(x2, y2, end2_x, end2_y);
+  strokeWeight(1);
 }
 
 void draw() {
