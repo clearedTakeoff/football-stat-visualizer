@@ -11,34 +11,41 @@ Map<Integer, JSONArray> allPasses;
 Map<Integer, JSONArray> allShots;
 int team1Id;
 int team2Id;
+String team1Name, team2Name;
 RadioButton halfSelector, playTypeSelector;
 ControlP5 cp5;
-int offsetX, offsetY, multiplier, selectedPlayer;
+int offsetX, offsetY, multiplier, selectedPlayer, currentHeight, currentWidth;
 
 void setup() {
+  //surface.setResizable(true);
   cp5 = new ControlP5(this);
-  size(1200, 800);
+  size(1400, 900);
+  currentHeight = height;
+  currentWidth = width;
   background(255);
-  drawPitch(width, height);
   readData();
-  
+  drawPitch(width, height); //<>//
+  createButtons();
+  registerMethod("onResize", this);
+}
+
+void createButtons() {
   // Trije gumbi za izbiro polčasa za prikaz (1., 2. ali celotna tekma(default value))
   halfSelector = cp5.addRadioButton("Polcas")
-                  .setPosition((width - 340) / 2, 120)
+                  .setPosition((width - 340) / 2, 80)
                   .setSize(100, 50)
                   .setItemsPerRow(3)
                   .setSpacingColumn(20)
                   .setNoneSelectedAllowed(false);
-  halfSelector.addItem("1. polcas", 1);
+  halfSelector.addItem("1. polčas", 1);
   halfSelector.addItem("2. polcas", 2);
   halfSelector.addItem("Cela tekma", 3);
   for (int i = 0; i < 3; i++) {
      halfSelector.getItem(i).getCaptionLabel().setPaddingX(-70);
   }
   halfSelector.activate("Cela tekma");
-  
   playTypeSelector = cp5.addRadioButton("playType")
-                        .setPosition((width - 220) / 2, 700)
+                        .setPosition((width - 220) / 2, multiplier * 80 + offsetY + 140)
                         .setSize(100, 50)
                         .setItemsPerRow(2)
                         .setSpacingColumn(20)
@@ -49,6 +56,45 @@ void setup() {
      playTypeSelector.getItem(i).getCaptionLabel().setPaddingX(-60);
   }
   playTypeSelector.activate("Podaje");
+  
+  int counter = 1;
+  for (int key : team2.keySet()) {
+    cp5.addButton(team2.get(key)).setValue(key).setPosition(50, counter * 50).setSize(150, 40)
+                  .onPress(new CallbackListener() {
+                    public void controlEvent(CallbackEvent theEvent) {
+                      int value = (int)theEvent.getController().getValue();
+                      selectedPlayer = value;
+                      drawEvents((int)playTypeSelector.getValue(), value);
+                      }
+                  });
+    counter++;
+  }
+  cp5.addButton("Ekipa1").setValue(2).setPosition(50, counter * 50).setSize(150, 40).setLabel("Celotna ekipa")
+                  .onPress(new CallbackListener() {
+                    public void controlEvent(CallbackEvent theEvent) {
+                      int value = (int)theEvent.getController().getValue();
+                      selectedPlayer = 2;
+                      drawEvents((int)playTypeSelector.getValue(), value);
+                      }});
+  counter = 1;
+  for (int key : team1.keySet()) {
+    cp5.addButton(team1.get(key)).setValue(key).setPosition(width - 200, counter * 50).setSize(150, 40)
+                  .onPress(new CallbackListener() {
+                    public void controlEvent(CallbackEvent theEvent) {
+                      int value = (int)theEvent.getController().getValue();
+                      selectedPlayer = value;
+                      drawEvents((int)playTypeSelector.getValue(), value);
+                      }
+                  });
+    counter++;
+  }
+  cp5.addButton("Ekipa2").setValue(1).setPosition(width - 200, counter * 50).setSize(150, 40).setLabel("Celotna ekipa")
+                  .onPress(new CallbackListener() {
+                    public void controlEvent(CallbackEvent theEvent) {
+                      int value = (int)theEvent.getController().getValue();
+                      selectedPlayer = 1;
+                      drawEvents((int)playTypeSelector.getValue(), value);
+                      }});
 }
 
 void controlEvent(ControlEvent theEvent) {
@@ -59,12 +105,26 @@ void controlEvent(ControlEvent theEvent) {
   }
 }
 
+void onResize() {
+  if (currentWidth != width || currentHeight != height) {
+    fill(255);
+    noStroke();
+    rect(0, 0, width, height);
+    stroke(0);
+    drawPitch(width, height);
+    currentWidth = width;
+    currentHeight = height;
+    createButtons();
+    println("Resize detected");
+  }
+}
+
 void readData() {
   input = loadJSONArray("19776.json");
   homeTeam = input.getJSONObject(0).getJSONObject("tactics").getJSONArray("lineup");
-  String team1Name = input.getJSONObject(0).getJSONObject("team").getString("name");
+  team1Name = input.getJSONObject(0).getJSONObject("team").getString("name");
   awayTeam = input.getJSONObject(1).getJSONObject("tactics").getJSONArray("lineup");
-  String team2Name = input.getJSONObject(1).getJSONObject("team").getString("name");
+  team2Name = input.getJSONObject(1).getJSONObject("team").getString("name");
   textSize(24);
   fill(0);
   text(team2Name, 50, 35);
@@ -154,41 +214,17 @@ void readData() {
           break;
     }
   }
-  int counter = 1;
-  for (int key : team2.keySet()) {
-    cp5.addButton(team2.get(key)).setValue(key).setPosition(50, counter * 50).setSize(150, 40)
-                  .onPress(new CallbackListener() {
-                    public void controlEvent(CallbackEvent theEvent) {
-                      String name = theEvent.getController().getName();
-                      int value = (int)theEvent.getController().getValue();
-                      selectedPlayer = value;
-                      drawEvents((int)playTypeSelector.getValue(), value);
-                      }
-                  });
-    counter++;
-  }
-  counter = 1;
-  for (int key : team1.keySet()) {
-    cp5.addButton(team1.get(key)).setValue(key).setPosition(width - 200, counter * 50).setSize(150, 40)
-                  .onPress(new CallbackListener() {
-                    public void controlEvent(CallbackEvent theEvent) {
-                      String name = theEvent.getController().getName();
-                      int value = (int)theEvent.getController().getValue();
-                      selectedPlayer = value;
-                      drawEvents((int)playTypeSelector.getValue(), value);
-                      }
-                  });
-    counter++;
-  }
 }
 
 void drawPitch(int sizeX, int sizeY) {
   multiplier = min((sizeX - 400) / 120, (sizeY - 400) / 80);
   offsetX = (sizeX - (multiplier * 120)) / 2;
   offsetY = (sizeY - (multiplier * 80)) / 2;
-  fill(255);
+  offsetY -= 40;
   noStroke();
-  rect(offsetX - 20, offsetY - 20, multiplier * 120 + 40, multiplier * 80 + 40);
+  fill(255);
+  rect(offsetX - 20, multiplier * 80 + offsetY + 10, multiplier * 120 + 30, 140);
+  rect(offsetX - 20, offsetY - 20, multiplier * 120 + 60, multiplier * 80 + 40);
   stroke(0);
   rect(offsetX, offsetY, multiplier * 120, multiplier * 80);
   noFill();
@@ -222,38 +258,205 @@ void drawEvents(int type, int playerId) {
 
 void drawPasses(int playerId) {
   drawPitch(width, height);
-  JSONArray passes = allPasses.get(playerId);
+  JSONArray passes = new JSONArray();
+  int counter = 0;
+  if (playerId == 2) {
+    for (int player : team2.keySet()) {
+      JSONArray current = allPasses.get(player);
+      for (int i = 0; i < current.size(); i++) {
+        passes.setJSONObject(counter, (JSONObject)current.get(i));
+        counter++;
+      }
+    }
+  } else if (playerId == 1) {
+     for (int player : team1.keySet()) {
+      JSONArray current = allPasses.get(player);
+      for (int i = 0; i < current.size(); i++) {
+        passes.setJSONObject(counter, (JSONObject)current.get(i));
+        counter++;
+      }
+    }
+  } else {
+    passes = allPasses.get(playerId);
+  }
+  int successfulLeft = 0;
+  int successfulRight = 0;
+  int failedLeft = 0;
+  int failedRight = 0;
   for (int i = 0; i < passes.size(); i++) {
     JSONObject currentPass = (JSONObject) passes.get(i);
     if ((int)halfSelector.getValue() == 3 || (int)halfSelector.getValue() == currentPass.getInt("half")) {
       if (currentPass.getBoolean("success")) {
-        stroke(0, 255, 0);
+        stroke(0, 120, 0);
+        if (currentPass.getInt("startX") < 60) {
+          successfulLeft++;
+        } else {
+          successfulRight++;
+        }
       } else {
         stroke(255, 0, 0);
+        if (currentPass.getInt("startX") < 60) {
+          failedLeft++;
+        } else {
+          failedRight++;
+        }
       }
       drawArrow(currentPass.getInt("startX") * multiplier + offsetX, currentPass.getInt("startY") * multiplier + offsetY,
           currentPass.getInt("endX") * multiplier + offsetX, currentPass.getInt("endY") * multiplier + offsetY);
     }
   }
+  println("Left side ok " + successfulLeft, " Left failed " + failedLeft + " right side ok " + successfulRight + " right side failed " + failedRight);
+  textAlign(CENTER);
+  fill(0);
+  textSize(16);
+  int top = 690;
+  String name, textLeft, textRight;
+  if (team1.containsKey(playerId) || playerId == 1) {
+    name = team1.get(playerId);
+    textLeft = "napadu: ";
+    textRight = "obrambi: ";
+    println("TEAM1");
+  } else {
+    name = team2.get(playerId);
+    textLeft = "obrambi: ";
+    textRight = "napadu: ";
+  }
+  String tmp;
+  if (playerId == 1) {
+    tmp = "Statistika ekipe " + team1Name;
+  } else if (playerId == 2) {
+    tmp = "Statistika ekipe " + team2Name;
+  } else {
+    tmp = "Statistika igralca " + name;
+  }
+  text(tmp, width / 2, top - 5);
+  textSize(12);
+  textAlign(RIGHT);
+  float percentage = round(((float(successfulLeft) / (float(successfulLeft) + float(failedLeft)) * 100f)));
+  text("Podaje v " + textLeft + successfulLeft + "/" + (successfulLeft + failedLeft) + " ("+ percentage + "% uspešnost)", width / 2 - 10, top + 17);
+  textAlign(LEFT);
+  percentage = round(((float(successfulRight) / (float(successfulRight) + float(failedRight)) * 100f)));
+  text("Podaje v " + textRight + successfulRight + "/" + (successfulRight + failedRight) + " ("+ percentage + "% uspešnost)", width / 2 + 10, top + 17);
+  strokeWeight(3);
   stroke(0,0,0);
+  line(width / 2, top + 20, width / 2, top + 60);
+  strokeWeight(1);
+  stroke(0, 120, 0);
+  fill(0, 120, 0);
+  if (successfulRight + failedRight > 0) {
+    rect(width / 2 + 2, top + 22, (successfulRight * 60 * multiplier) / (successfulRight + failedRight), 17);
+  }
+  if (successfulLeft + failedLeft > 0) {
+    rect(width / 2 - 2 - (successfulLeft * 60 * multiplier) / (successfulLeft + failedLeft), top + 22, (successfulLeft * 60 * multiplier) / (successfulLeft + failedLeft), 17);
+  }
+  stroke(255, 0, 0);
+  fill(255, 0, 0);
+  if (successfulRight + failedRight > 0) {
+    rect(width / 2 + 2, top + 40, (failedRight * 60 * multiplier) / (successfulRight + failedRight), 17);
+  }
+  if (successfulLeft + failedLeft > 0) {
+    rect(width / 2 - 2 - (failedLeft * 60 * multiplier) / (successfulLeft + failedLeft), top + 40, (failedLeft * 60 * multiplier) / (successfulLeft + failedLeft), 17);
+  }
 }
 
 void drawShots(int playerId) {
   drawPitch(width, height);
-  JSONArray shots = allShots.get(playerId);
+  JSONArray shots = new JSONArray();
+  int counter = 0;
+  int successfulShots = 0;
+  int failedShots = 0;
+  if (playerId == 2) {
+    for (int player : team2.keySet()) {
+      JSONArray current = allShots.get(player);
+      for (int i = 0; i < current.size(); i++) {
+        shots.setJSONObject(counter, (JSONObject)current.get(i));
+        counter++;
+      }
+    }
+  } else if (playerId == 1) {
+     for (int player : team1.keySet()) {
+      JSONArray current = allShots.get(player);
+      for (int i = 0; i < current.size(); i++) {
+        shots.setJSONObject(counter, (JSONObject)current.get(i));
+        counter++;
+      }
+    }
+  } else {
+    shots = allShots.get(playerId);
+  }
   for (int i = 0; i < shots.size(); i++) {
     JSONObject currentShot = (JSONObject) shots.get(i);
     if ((int)halfSelector.getValue() == 3 || (int)halfSelector.getValue() == currentShot.getInt("half")) {
       if (currentShot.getBoolean("success")) {
-        stroke(0, 255, 0);
+        stroke(0, 120, 0);
+        successfulShots++;
       } else {
         stroke(255, 0, 0);
+        failedShots++;
       }
       drawArrow(currentShot.getInt("startX") * multiplier + offsetX, currentShot.getInt("startY") * multiplier + offsetY,
           currentShot.getInt("endX") * multiplier + offsetX, currentShot.getInt("endY") * multiplier + offsetY);
     }
   }
   stroke(0,0,0);
+  
+  textAlign(CENTER);
+  fill(0);
+  textSize(16);
+  int top = 690;
+  int team, textX;
+  String name, textLeft, textRight;
+  if (team1.containsKey(playerId) || playerId == 1) {
+    name = team1.get(playerId);
+    team = 1;
+    textLeft = "napadu: ";
+    textRight = "obrambi: ";
+  } else {
+    team = 2;
+    name = team2.get(playerId);
+    textLeft = "obrambi: ";
+    textRight = "napadu: ";
+  }
+  String tmp;
+  if (playerId == 1) {
+    tmp = "Statistika ekipe " + team1Name;
+  } else if (playerId == 2) {
+    tmp = "Statistika ekipe " + team2Name;
+  } else {
+    tmp = "Statistika igralca " + name;
+  }
+  text(tmp, width / 2, top - 5);
+  textSize(12);
+  strokeWeight(3);
+  stroke(0,0,0);
+  line(width / 2, top + 20, width / 2, top + 60);
+  float percentage = round(((float(successfulShots) / (float(successfulShots) + float(failedShots)) * 100f)));
+  if (team == 1) {
+    textAlign(RIGHT);
+    text("Strelska učinkovitost: " + successfulShots + "/" + (successfulShots + failedShots) + " ("+ percentage + "% uspešnost)", width / 2 - 10, top + 17);
+    if (successfulShots + failedShots > 0) {
+      strokeWeight(1);
+      stroke(0, 120, 0);
+      fill(0, 120, 0);
+      rect(width / 2 - 2 - (successfulShots * 60 * multiplier) / (successfulShots + failedShots), top + 22, (successfulShots * 60 * multiplier) / (successfulShots + failedShots), 17);
+      stroke(255, 0, 0);
+      fill(255, 0, 0);    
+      rect(width / 2 - 2 - (failedShots * 60 * multiplier) / (successfulShots + failedShots), top + 40, (failedShots * 60 * multiplier) / (successfulShots + failedShots), 17);
+    }
+  } else {
+    textAlign(LEFT);
+    text("Strelska učinkovitost: " + successfulShots + "/" + (successfulShots + failedShots) + " ("+ percentage + "% uspešnost)", width / 2 + 10, top + 17);
+    if (successfulShots + failedShots > 0) {
+      strokeWeight(1);
+      stroke(0, 120, 0);
+      fill(0, 120, 0);
+      rect(width / 2 + 2, top + 22, (successfulShots * 60 * multiplier) / (successfulShots + failedShots), 17);
+      stroke(255, 0, 0);
+      fill(255, 0, 0);    
+      rect(width / 2 + 2, top + 40, (failedShots * 60 * multiplier) / (successfulShots + failedShots), 17);
+    }
+  }
+  strokeWeight(1);
 }
 
 void drawArrow(int x1, int y1, int x2, int y2) {
@@ -275,6 +478,7 @@ void drawArrow(int x1, int y1, int x2, int y2) {
 }
 
 void draw() {
+  //onResize();
   // Pass id = 30
   //drawShots(16378);
 }
