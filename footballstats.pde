@@ -9,6 +9,9 @@ Map<Integer, String> team1;
 Map<Integer, String> team2;
 Map<Integer, JSONArray> allPasses;
 Map<Integer, JSONArray> allShots;
+Map<Integer, ArrayList> activity;
+Button[] team1Buttons;
+Button[] team2Buttons;
 int team1Id;
 int team2Id;
 int transparency;
@@ -27,13 +30,13 @@ void setup() {
   size(1400, 900);
   currentHeight = height;
   currentWidth = width;
-  background(255);
+  background(255); 
   readData();
   drawPitch(width, height); //<>//
-  createButtons();
-  registerMethod("onResize", this);
+  createButtons(); //<>//
   transparency = 200;
   arrowWidth = 1.65;
+  //heatMap(4647);
 }
 
 void createButtons() {
@@ -53,23 +56,22 @@ void createButtons() {
   halfSelector.getItem(2).getCaptionLabel().setPaddingX(-84);
   halfSelector.activate("Cela tekma");
   playTypeSelector = cp5.addRadioButton("playType")
-                        .setPosition((width - 220) / 2, multiplier * 80 + offsetY + 140)
+                        .setPosition((width - 220) / 2 - 60, multiplier * 80 + offsetY + 140)
                         .setSize(100, 50)
-                        .setItemsPerRow(2)
+                        .setItemsPerRow(3)
                         .setSpacingColumn(20)
                         .setNoneSelectedAllowed(false);
   playTypeSelector.addItem("Podaje", 1);
   playTypeSelector.addItem("Streli", 2);
-  for (int i = 0; i < 2; i++) {
-     playTypeSelector.getItem(i).getCaptionLabel().setPaddingX(-60);
-  }
+  playTypeSelector.addItem("Aktivnost", 3);
   playTypeSelector.getItem(0).getCaptionLabel().setPaddingX(-72);
   playTypeSelector.getItem(1).getCaptionLabel().setPaddingX(-69);
+  playTypeSelector.getItem(2).getCaptionLabel().setPaddingX(-80);
   playTypeSelector.activate("Podaje");
-  
   int counter = 1;
+  team2Buttons = new Button[team2.size() + 1];
   for (int key : team2.keySet()) {
-    cp5.addButton(team2.get(key)).setValue(key).setPosition(50, counter * 50).setSize(200, 40)
+    team2Buttons[counter - 1] = cp5.addButton(team2.get(key)).setValue(key).setPosition(50, counter * 50).setSize(200, 40)
                   .onPress(new CallbackListener() {
                     public void controlEvent(CallbackEvent theEvent) {
                       int value = (int)theEvent.getController().getValue();
@@ -79,7 +81,7 @@ void createButtons() {
                   });
     counter++;
   }
-  cp5.addButton("Ekipa1").setValue(2).setPosition(50, counter * 50).setSize(200, 40).setLabel("Celotna ekipa")
+  team2Buttons[counter - 1] = cp5.addButton("Ekipa2").setValue(2).setPosition(50, counter * 50).setSize(200, 40).setLabel("Celotna ekipa")
                   .onPress(new CallbackListener() {
                     public void controlEvent(CallbackEvent theEvent) {
                       int value = (int)theEvent.getController().getValue();
@@ -87,8 +89,9 @@ void createButtons() {
                       drawEvents((int)playTypeSelector.getValue(), value);
                       }});
   counter = 1;
+  team1Buttons = new Button[team1.size() + 1];
   for (int key : team1.keySet()) {
-    cp5.addButton(team1.get(key)).setValue(key).setPosition(width - 250, counter * 50).setSize(200, 40)
+    team1Buttons[counter - 1] = cp5.addButton(team1.get(key)).setValue(key).setPosition(width - 250, counter * 50).setSize(200, 40)
                   .onPress(new CallbackListener() {
                     public void controlEvent(CallbackEvent theEvent) {
                       int value = (int)theEvent.getController().getValue();
@@ -98,13 +101,24 @@ void createButtons() {
                   });
     counter++;
   }
-  cp5.addButton("Ekipa2").setValue(1).setPosition(width - 250, counter * 50).setSize(200, 40).setLabel("Celotna ekipa")
+  team1Buttons[counter - 1] = cp5.addButton("Ekipa1").setValue(1).setPosition(width - 250, counter * 50).setSize(200, 40).setLabel("Celotna ekipa")
                   .onPress(new CallbackListener() {
                     public void controlEvent(CallbackEvent theEvent) {
                       int value = (int)theEvent.getController().getValue();
                       selectedPlayer = 1;
                       drawEvents((int)playTypeSelector.getValue(), value);
                       }});
+}
+
+void resizeButtons() {
+  for (int i = 0; i < team1Buttons.length; i++) {
+    team1Buttons[i].setPosition(width - 250, (i+1) * 50);
+  }
+  for (int i = 0; i < team2Buttons.length; i++) {
+    team2Buttons[i].setPosition(50, (i+1) * 50);
+  }
+  playTypeSelector.setPosition((width - 220) / 2 - 60, multiplier * 80 + offsetY + 140);
+  halfSelector.setPosition((width - 340) / 2, 80);
 }
 
 void controlEvent(ControlEvent theEvent) {
@@ -124,7 +138,7 @@ void onResize() {
     drawPitch(width, height);
     currentWidth = width;
     currentHeight = height;
-    createButtons();
+    resizeButtons();
     println("Resize detected");
   }
 }
@@ -144,6 +158,7 @@ void readData() {
   team2 = new HashMap<Integer, String>();
   allPasses = new HashMap<Integer, JSONArray>();
   allShots = new HashMap<Integer, JSONArray>();
+  activity = new HashMap<Integer, ArrayList>();
   team1Id = input.getJSONObject(0).getJSONObject("team").getInt("id");
   team2Id = input.getJSONObject(0).getJSONObject("team").getInt("id");
   for (int i = 0; i < 11; i++) {
@@ -155,6 +170,8 @@ void readData() {
     allShots.put(player.getInt("id"), new JSONArray());
     allPasses.put(player2.getInt("id"), new JSONArray());
     allShots.put(player2.getInt("id"), new JSONArray());
+    activity.put(player.getInt("id"), new ArrayList<int[]>());
+    activity.put(player2.getInt("id"), new ArrayList<int[]>());
   }
   int mirrorX = 60;
   int mirrorY = 40;
@@ -173,6 +190,7 @@ void readData() {
           }
           allPasses.put(substitution.getInt("id"), new JSONArray());
           allShots.put(substitution.getInt("id"), new JSONArray());
+          activity.put(substitution.getInt("id"), new ArrayList<int[]>());
           break;
         case 16:  
           startX = currentEvent.getJSONArray("location").getInt(0);
@@ -223,6 +241,16 @@ void readData() {
           allPasses.get(currentEvent.getJSONObject("player").getInt("id")).append(pass);
           break;
     }
+    //println(currentEvent);
+    if (!currentEvent.isNull("location") && !currentEvent.isNull("player")) {
+      startX = currentEvent.getJSONArray("location").getInt(0);
+      startY = currentEvent.getJSONArray("location").getInt(1);
+      if (teamId == team2Id) {
+            startX = -startX + mirrorX * 2;
+            startY = -startY + mirrorY * 2;
+      }
+      activity.get(currentEvent.getJSONObject("player").getInt("id")).add(new int[]{startX, startY});
+    }
   }
 }
 
@@ -264,6 +292,9 @@ void drawEvents(int type, int playerId) {
       drawPasses(playerId);
     } else if (type == 2) {
       drawShots(playerId);
+    } else if (type == 3) {
+      drawPitch(width, height);
+      heatMap(playerId);
     }
   }
 }
@@ -320,7 +351,7 @@ void drawPasses(int playerId) {
   textAlign(CENTER);
   fill(0);
   textSize(16);
-  int top = 690;
+  int top = multiplier * 80 + offsetY + 40;
   String name, textLeft, textRight;
   if (team1.containsKey(playerId) || playerId == 1) {
     name = team1.get(playerId);
@@ -414,7 +445,7 @@ void drawShots(int playerId) {
   textAlign(CENTER);
   fill(0);
   textSize(16);
-  int top = 690;
+  int top = multiplier * 80 + offsetY + 40;
   int team;
   String name;
   if (team1.containsKey(playerId) || playerId == 1) {
@@ -486,8 +517,136 @@ void drawArrow(int x1, int y1, int x2, int y2) {
   strokeWeight(1);
 }
 
+void heatMap(int playerId) {
+  int resize = 10 * multiplier;
+  int[][] groupedData = new int[12][8];
+  float[][] interpolatedArray = new float[12 * resize][8 * resize];
+  int maxValue = 0;
+  for (int i = 0; i < groupedData.length; i++) {
+    for(int j = 0; j < groupedData[i].length; j++) {
+      groupedData[i][j] = 0;
+    }
+  }
+  ArrayList playerActivity;
+  if (playerId == 2) {
+    playerActivity = new ArrayList<int[]>();
+    for (int player : team2.keySet()) {
+      playerActivity.addAll(activity.get(player));
+    }
+  } else if (playerId == 1) {
+     playerActivity = new ArrayList<int[]>();
+     for (int player : team1.keySet()) {
+       playerActivity.addAll(activity.get(player));
+     }
+   } else {
+    playerActivity = activity.get(playerId);
+  }
+  for(int i = 0; i < playerActivity.size(); i++) {
+    int[] coords = (int[])playerActivity.get(i);
+    int x = max(0, (int)(coords[0] / 10) - 1);
+    int y = max(0, (int)(coords[1] / 10) - 1);
+    groupedData[x][y]++;
+  }
+  for(int i = 0; i < groupedData.length; i++) {
+    for(int j = 0; j < groupedData[i].length; j++) {
+      maxValue = max(groupedData[i][j], maxValue);
+      //fill(lerpColor(from, to, groupedData[i][j] / maxValue));
+      //rect(offsetX + (i * 10) * multiplier, offsetY + (j * 10 * multiplier), 10 * multiplier, 10 * multiplier);
+    }
+  }
+  //noStroke();
+  for(int i = 0; i < groupedData.length; i++) {
+    for(int j = 0; j < groupedData[i].length; j++) {
+      int x = i * resize + 5;
+      int y = j * resize + 5;
+      interpolatedArray[x][y] = groupedData[i][j];    
+    }
+  }
+  
+  for(int x = 0; x < interpolatedArray.length; x++) {
+    int dx1 = floor(x / (resize * 1.0f));
+    int dx2 = ceil(x / (resize * 1.0f));
+    dx2 = min(11, dx2);
+    int x1 = dx1 * resize + 5;
+    int x2 = dx2 * resize + 5;
+    for(int y = 0; y < interpolatedArray[x].length; y++) {
+      int dy1 = floor(y / (resize * 1.0f));
+      int dy2 = ceil(y / (resize * 1.0f));
+      dy2 = min(7, dy2);
+      int y1 = dy1 * resize + 5;
+      int y2 = dy2 * resize + 5;
+
+      float q11 = groupedData[dx1][dy1];
+      float q12 = groupedData[dx1][dy2];
+      float q21 = groupedData[dx2][dy1];
+      float q22 = groupedData[dx2][dy2];
+      
+      if (!(y1==y2 && x1==x2)) {
+
+        float t1 = (x-x1);
+        float t2 = (x2-x);
+        float t3 = (y-y1);
+        float t4 = (y2-y);
+        float t5 = (x2-x1);
+        float t6 = (y2-y1);
+        if (y1==y2) {
+          //interpolatedArray[x][y] = 900.0;
+          //interpolatedArray[x][y] = q11 * t2 / t5 + q21 * t1 / t5;
+        } else if (x1==x2) {
+          //interpolatedArray[x][y] = q11 * t4 / t6 + q12 * t3 / t6;
+        } else {
+          interpolatedArray[x][y] = (q11 * t2 * t4 + q21 * t1 * t4 + q12 * t2 * t3 + q22 * t1 * t3) / (t5 * t6);
+        }
+      } else {
+        interpolatedArray[x][y] = 0;
+      }
+    }
+  }
+  
+  for(int i = 60; i < interpolatedArray.length; i += resize) {
+    for(int j = 0; j < interpolatedArray[i].length; j++) {
+      interpolatedArray[i][j] = 0.5 * (interpolatedArray[i+1][j] + interpolatedArray[i-1][j]);
+    }
+    //println();
+  }
+  for(int j = 60; j < interpolatedArray[0].length; j += resize) {
+    for(int i = 0; i < interpolatedArray.length; i++) {
+      interpolatedArray[i][j] = 0.5 * (interpolatedArray[i][j - 1] + interpolatedArray[i][j + 1]);
+    }
+  }
+  
+  
+  color from = color(0, 0, 255, 150); 
+  color to = color(255, 0, 0);
+  for (int i = 0; i < interpolatedArray.length; i++) {
+    for (int j = 0; j < interpolatedArray[i].length; j++) {
+      stroke(lerpColor(from, to, map(interpolatedArray[i][j], 0, maxValue, 0, 1)));
+      point(i + offsetX, j + offsetY);
+    }
+  }
+  /*for(int i = 1; i < groupedColors.length - 1; i++) {
+    for(int j = 1; j < groupedColors[i].length - 1; j++) {
+      for(int k = 0; k < 10; k++) {
+        color current = groupedColors[i][j];
+        color a = lerpColor(current, groupedColors[i + 1][j],(float) k / 10f); 
+        for(int l = 0; l < 10; l++) {
+          color b = lerpColor(current, groupedColors[i][j + 1],(float) l / 10f);
+          color c = lerpColor(current, groupedColors[i + 1][j + 1], (float) (sqrt(l * l + k * k) / sqrt(200)));
+          float f1 = k / 10f;
+          float f2 = l / 10f;
+          fill(lerpColor(a, b, (float)(f1 / (f1 + f2))));
+          rect(offsetX + (i * 10 + k) * multiplier, offsetY + (j * 10 + l) * multiplier, 5, 5);
+        }
+      }
+      //fill(lerpColor(from, to, (float)groupedData[i][j] / maxValue));
+      //rect(offsetX + (i * 10) * multiplier, offsetY + (j * 10 * multiplier), 10 * multiplier, 10 * multiplier);
+      //circle(offsetX + ((i * 10 + 5) * multiplier), offsetY + ((j * 10 + 5) * multiplier), 20 * multiplier);    
+    }
+  }*/
+}
+
 void draw() {
-  //onResize();
+  onResize();
   // Pass id = 30
   //drawShots(16378);
 }
